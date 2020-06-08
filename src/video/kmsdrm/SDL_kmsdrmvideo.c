@@ -256,8 +256,13 @@ KMSDRM_FBDestroyCallback(struct gbm_bo *bo, void *data)
 KMSDRM_FBInfo *
 KMSDRM_FBFromBO(_THIS, struct gbm_bo *bo)
 {
+<<<<<<< HEAD
     SDL_VideoData *viddata = ((SDL_VideoData *)_this->driverdata);
     unsigned w,h;
+=======
+    uint32_t w, h, stride, handle, format;
+    uint32_t bo_handles[4] = {0}, offsets[4] = {0}, pitches[4] = {0};
+>>>>>>> 913ddc88c... WIP 2
     int ret;
     Uint32 stride, handle;
 
@@ -284,15 +289,22 @@ KMSDRM_FBFromBO(_THIS, struct gbm_bo *bo)
     h = KMSDRM_gbm_bo_get_height(bo);
     stride = KMSDRM_gbm_bo_get_stride(bo);
     handle = KMSDRM_gbm_bo_get_handle(bo).u32;
-    ret = KMSDRM_drmModeAddFB(viddata->drm_fd, w, h, 24, 32, stride, handle,
-                                  &fb_info->fb_id);
-    if (ret) {
-      SDL_free(fb_info);
-      return NULL;
+    format = KMSDRM_gbm_bo_get_format(bo);
+
+    pitches[0] = stride;
+    bo_handles[0] = handle;
+
+    //ret = KMSDRM_drmModeAddFB(vdata->drm_fd, w, h, 24, 32, stride, handle, &fb_info->fb_id);
+    ret = KMSDRM_drmModeAddFB2(vdata->drm_fd, w, h, format, bo_handles,
+                               pitches, offsets, &fb_info->fb_id, 0);
+
+    if (ret < 0) {
+       SDL_free(fb_info);
+       return NULL;
     }
 
-    SDL_LogDebug(SDL_LOG_CATEGORY_VIDEO, "New DRM FB (%u): %ux%u, stride %u from BO %p",
-                 fb_info->fb_id, w, h, stride, (void *)bo);
+    SDL_LogDebug(SDL_LOG_CATEGORY_VIDEO, "New DRM FB (%u): %ux%u, stride %u from BO %p format %u",
+                 fb_info->fb_id, w, h, stride, (void *)bo, format);
 
     /* Associate our DRM framebuffer with this buffer object */
     KMSDRM_gbm_bo_set_user_data(bo, fb_info, KMSDRM_FBDestroyCallback);
